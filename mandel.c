@@ -1,4 +1,9 @@
-/// 
+/**********************************************
+*  Filename: jpegrw.c
+*  Description: Modified program to create Mandelbrot images.
+*  Author: Gabe Limberg
+*  Date: 11/17/2025
+***********************************************/
 //  mandel.c
 //  Based on example code found here:
 //  https://users.cs.fiu.edu/~cpoellab/teaching/cop4610_fall22/project3.html
@@ -9,14 +14,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include "jpegrw.h"
+#include <getopt.h> // for command line argument parsing
+#include <sys/wait.h> // for using wait()
+#include "jpegrw.h"	
+#define MANDEL_AMOUNT 50 // amount of mandelbrot images to create
 
 // local routines
 static int iteration_to_color( int i, int max );
 static int iterations_at_point( double x, double y, int max );
 static void compute_image( imgRawImage *img, double xmin, double xmax,
 									double ymin, double ymax, int max );
-static void show_help();
+//static void show_help();
 
 
 int main( int argc, char *argv[] )
@@ -25,7 +33,7 @@ int main( int argc, char *argv[] )
 
 	// These are the default configuration values used
 	// if no command line arguments are given.
-	const char *outfile = "mandel.jpg";
+	//const char *outfile = "mandel.jpg"; not use due to multiple files
 	double xcenter = 0;
 	double ycenter = 0;
 	double xscale = 4;
@@ -33,61 +41,97 @@ int main( int argc, char *argv[] )
 	int    image_width = 1000;
 	int    image_height = 1000;
 	int    max = 1000;
+	int MAX_PROC = 4; // default amount of processes if no argument presented in terminal
 
 	// For each command line argument given,
 	// override the appropriate configuration value.
 
-	while((c = getopt(argc,argv,"x:y:s:W:H:m:o:h"))!=-1) {
+	while((c = getopt(argc,argv,"p:"))!=-1) {
 		switch(c) 
 		{
-			case 'x':
-				xcenter = atof(optarg);
+			// case 'x':
+			// 	xcenter = atof(optarg);
+			// 	break;
+			// case 'y':
+			// 	ycenter = atof(optarg);
+			// 	break;
+			// case 's':
+			// 	xscale = atof(optarg);
+			// 	break;
+			// case 'W':
+			// 	image_width = atoi(optarg);
+			// 	break;
+			// case 'H':
+			// 	image_height = atoi(optarg);
+			// 	break;
+			// case 'm':
+			// 	max = atoi(optarg);
+			// 	break;
+			// //case 'o':
+			// 	//outfile = optarg;
+			// 	//break;
+			// case 'h':
+			// 	show_help();
+			// 	exit(1);
+			// 	break;
+			case 'p':
+				MAX_PROC = atoi(optarg); // set max processes
 				break;
-			case 'y':
-				ycenter = atof(optarg);
-				break;
-			case 's':
-				xscale = atof(optarg);
-				break;
-			case 'W':
-				image_width = atoi(optarg);
-				break;
-			case 'H':
-				image_height = atoi(optarg);
-				break;
-			case 'm':
-				max = atoi(optarg);
-				break;
-			case 'o':
-				outfile = optarg;
-				break;
-			case 'h':
-				show_help();
-				exit(1);
-				break;
+
 		}
 	}
 
-	// Calculate y scale based on x scale (settable) and image sizes in X and Y (settable)
-	yscale = xscale / image_width * image_height;
+	int act_proc = 0; // current active process count
 
-	// Display the configuration of the image.
-	printf("mandel: x=%lf y=%lf xscale=%lf yscale=%1f max=%d outfile=%s\n",xcenter,ycenter,xscale,yscale,max,outfile);
 
-	// Create a raw image of the appropriate size.
-	imgRawImage* img = initRawImage(image_width,image_height);
+	for (int i = 0; i < MANDEL_AMOUNT; i++) {
+		if (act_proc >= MAX_PROC) { // if active process count reached max, wait for one to finish
+			wait(NULL); 
+			act_proc--; // decrement active process count
+		}
 
-	// Fill it with a black
-	setImageCOLOR(img,0);
+		xscale *= 0.9; // zoom in each iteration
+		xcenter = -0.61; // pan to interesting area
+		ycenter = -0.60;
+		int pid = fork();
 
-	// Compute the Mandelbrot image
-	compute_image(img,xcenter-xscale/2,xcenter+xscale/2,ycenter-yscale/2,ycenter+yscale/2,max);
+		if (pid == 0) { // Child process
 
-	// Save the image in the stated file.
-	storeJpegImageFile(img,outfile);
+			// Calculate y scale based on x scale (settable) and image sizes in X and Y (settable)
+			yscale = xscale / image_width * image_height;
 
-	// free the mallocs
-	freeRawImage(img);
+			// Create a raw image of the appropriate size.
+			imgRawImage* img = initRawImage(image_width,image_height);
+
+			// Fill it with a black
+			setImageCOLOR(img,0);
+
+			// Compute the Mandelbrot image
+			compute_image(img,xcenter-xscale/2,xcenter+xscale/2,ycenter-yscale/2,ycenter+yscale/2,max);
+
+			// Save the image in the stated file.
+			char filename[256];
+			sprintf(filename, "mandel_%d.jpg", i);
+			storeJpegImageFile(img,filename);
+
+			// Print out the parameters used
+			printf("mandel: x=%lf y=%lf xscale=%lf yscale=%1f max=%d outfile=%s\n",xcenter,ycenter,xscale,yscale,max,filename);
+
+			// free the mallocs
+			freeRawImage(img);
+
+			exit(0);
+		} else {
+			// Parent process
+			act_proc++;
+		}
+	}
+
+	// Wait for all child processes to finish
+	while (act_proc > 0) {
+		wait(NULL);
+		act_proc--; // decrement active process count
+	}
 
 	return 0;
 }
@@ -166,20 +210,20 @@ int iteration_to_color( int iters, int max )
 
 
 // Show help message
-void show_help()
-{
-	printf("Use: mandel [options]\n");
-	printf("Where options are:\n");
-	printf("-m <max>    The maximum number of iterations per point. (default=1000)\n");
-	printf("-x <coord>  X coordinate of image center point. (default=0)\n");
-	printf("-y <coord>  Y coordinate of image center point. (default=0)\n");
-	printf("-s <scale>  Scale of the image in Mandlebrot coordinates (X-axis). (default=4)\n");
-	printf("-W <pixels> Width of the image in pixels. (default=1000)\n");
-	printf("-H <pixels> Height of the image in pixels. (default=1000)\n");
-	printf("-o <file>   Set output file. (default=mandel.bmp)\n");
-	printf("-h          Show this help text.\n");
-	printf("\nSome examples are:\n");
-	printf("mandel -x -0.5 -y -0.5 -s 0.2\n");
-	printf("mandel -x -.38 -y -.665 -s .05 -m 100\n");
-	printf("mandel -x 0.286932 -y 0.014287 -s .0005 -m 1000\n\n");
-}
+// void show_help()
+// {
+// 	printf("Use: mandel [options]\n");
+// 	printf("Where options are:\n");
+// 	printf("-m <max>    The maximum number of iterations per point. (default=1000)\n");
+// 	printf("-x <coord>  X coordinate of image center point. (default=0)\n");
+// 	printf("-y <coord>  Y coordinate of image center point. (default=0)\n");
+// 	printf("-s <scale>  Scale of the image in Mandlebrot coordinates (X-axis). (default=4)\n");
+// 	printf("-W <pixels> Width of the image in pixels. (default=1000)\n");
+// 	printf("-H <pixels> Height of the image in pixels. (default=1000)\n");
+// 	//printf("-o <file>   Set output file. (default=mandel.bmp)\n");
+// 	printf("-h          Show this help text.\n");
+// 	printf("\nSome examples are:\n");
+// 	printf("mandel -x -0.5 -y -0.5 -s 0.2\n");
+// 	printf("mandel -x -.38 -y -.665 -s .05 -m 100\n");
+// 	printf("mandel -x 0.286932 -y 0.014287 -s .0005 -m 1000\n\n");
+// }

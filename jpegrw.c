@@ -1,4 +1,8 @@
-/// 
+/**********************************************
+*  Filename: jpegrw.c
+*  Description: Program to read and write JPEG files.
+*  Date: 11/17/2025
+***********************************************/
 //  jpegrw.c
 //  Based on example code found here:
 //  https://www.tspi.at/2020/03/20/libjpegexample.html

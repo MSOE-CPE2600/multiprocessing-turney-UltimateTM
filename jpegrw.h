@@ -1,3 +1,8 @@
+/**********************************************
+*  Filename: jpegrw.h
+*  Description: Program to read and write JPEG files.
+*  Date: 11/17/2025
+***********************************************/
 #ifndef JPEGRW_H
 #define JPEGRW_H
 
