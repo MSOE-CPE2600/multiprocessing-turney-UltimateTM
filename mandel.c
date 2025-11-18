@@ -41,7 +41,7 @@ int main( int argc, char *argv[] )
 	int    image_width = 1000;
 	int    image_height = 1000;
 	int    max = 1000;
-	int MAX_PROC = 4; // default amount of processes if no argument presented in terminal
+	int MAX_PROC = 12; // default amount of processes if no argument presented in terminal
 
 	// For each command line argument given,
 	// override the appropriate configuration value.
@@ -111,7 +111,7 @@ int main( int argc, char *argv[] )
 
 			// Save the image in the stated file.
 			char filename[256];
-			sprintf(filename, "mandel_%d.jpg", i);
+			sprintf(filename, "mandel%d.jpg", i);
 			storeJpegImageFile(img,filename);
 
 			// Print out the parameters used
