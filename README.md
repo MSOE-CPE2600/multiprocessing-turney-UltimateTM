@@ -8,4 +8,4 @@ I implemented this using the for loop dependent on the amount of mandel images. 
 From my results, I found that it took quite a while to generate all 50 mandel images using a single process. The processing time decreased exponentially as I added more and more process, eventually reaching a plateau at 10 processes. This can be seen in the following graph:
 
 
-
+https://github.com/MSOE-CPE2600/multiprocessing-turney-UltimateTM/blob/labWeek11dev/Mandel_Graph.png
