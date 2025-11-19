@@ -27,8 +27,7 @@ static void compute_image( imgRawImage *img, double xmin, double xmax,
 static void show_help();
 
 
-int main( int argc, char *argv[] )
-{
+int main( int argc, char *argv[] ){
 	char c;
 
 	// These are the default configuration values used
@@ -81,60 +80,64 @@ int main( int argc, char *argv[] )
 		}
 	}
 
-	int act_proc = 0; // current active process count
+	int act_proc; // not really needed in batch mode, but we can keep it
+	int i = 0;        // frame index
 
+	while (i < MANDEL_AMOUNT) {
 
-	for (int i = 0; i < MANDEL_AMOUNT; i++) {
-		if (act_proc >= MAX_PROC) { // if active process count reached max, wait for one to finish
-			wait(NULL); 
-			act_proc--; // decrement active process count
-		}
+		act_proc = 0; // active processes, creates n batches based on MAX_PROC
 
-		xscale *= 0.9; // zoom in each iteration
-		xcenter = -0.61; // pan to interesting area
-		ycenter = -0.60;
-		int pid = fork();
+		while (act_proc < MAX_PROC && i < MANDEL_AMOUNT) {
 
-		if (pid == 0) { // Child process
-
-			// Calculate y scale based on x scale (settable) and image sizes in X and Y (settable)
+			xscale *= 0.9; // zoom in each iteration
 			yscale = xscale / image_width * image_height;
+			xcenter = -0.61; // pan to interesting area
+			ycenter = -0.60; // interesting area 
 
-			// Create a raw image of the appropriate size.
-			imgRawImage* img = initRawImage(image_width,image_height);
-
-			// Fill it with a black
-			setImageCOLOR(img,0);
-
-			// Compute the Mandelbrot image
-			compute_image(img,xcenter-xscale/2,xcenter+xscale/2,ycenter-yscale/2,ycenter+yscale/2,max);
-
-			// Save the image in the stated file.
 			char filename[256];
 			sprintf(filename, "mandel%d.jpg", i);
-			storeJpegImageFile(img,filename);
 
-			// Print out the parameters used
-			printf("mandel: x=%lf y=%lf xscale=%lf yscale=%1f max=%d outfile=%s\n",xcenter,ycenter,xscale,yscale,max,filename);
+			int pid = fork(); // create new process
 
-			// free the mallocs
-			freeRawImage(img);
+			if (pid == 0) { // Child process
 
-			exit(0);
-		} else {
-			// Parent process
-			act_proc++;
+				// Create a raw image of the appropriate size.
+				imgRawImage* img = initRawImage(image_width, image_height);
+
+				// Fill it with a black
+				setImageCOLOR(img, 0);
+
+				// Compute the Mandelbrot image
+				compute_image(img, xcenter - xscale / 2, xcenter + xscale / 2, ycenter - yscale / 2,
+					ycenter + yscale / 2, max);
+
+				// Save the image in the stated file.
+				storeJpegImageFile(img, filename);
+
+				// free the mallocs
+				freeRawImage(img);
+
+				exit(0);
+			} else if (pid > 0) {
+				// Parent process
+				act_proc++;
+				printf("mandel: x=%lf y=%lf xscale=%lf yscale=%1f max=%d outfile=%s\n",
+					xcenter, ycenter, xscale, yscale, max, filename);
+				fflush(stdout);
+
+				i++; // move to next frame index
+			}
 		}
-	}
 
-	// Wait for all child processes to finish
-	while (act_proc > 0) {
-		wait(NULL);
-		act_proc--; // decrement active process count
+		while (act_proc > 0) {
+			wait(NULL);
+			act_proc--;
+		}
 	}
 
 	return 0;
 }
+
 
 
 
