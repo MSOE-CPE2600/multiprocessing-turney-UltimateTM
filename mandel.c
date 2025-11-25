@@ -70,13 +70,13 @@ int main( int argc, char *argv[] ){
 	int    image_width = 1000;
 	int    image_height = 1000;
 	int    max = 1000;
-	int MAX_PROC = 12; // default amount of processes if no argument presented in terminal
-	int num_threads = 4; // default number of threads for each process
+	int MAX_PROC = 10; // default amount of processes if no argument presented in terminal
+	int num_threads = 1; // default number of threads for each process
 
 	// For each command line argument given,
 	// override the appropriate configuration value.
 	//c = getopt(argc,argv,"x:y:s:W:H:m:o:h"
-	while((c = getopt(argc,argv,"x:y:s:W:H:m:h:p:"))!=-1) {
+	while((c = getopt(argc,argv,"x:y:s:W:H:m:h:p:t:"))!=-1) {
 		switch(c) 
 		{
 			case 'x':
@@ -235,28 +235,30 @@ void compute_image(imgRawImage* img, double xmin, double xmax, double ymin, doub
 		pthread_t *threads = malloc(num_threads * sizeof(pthread_t)); // array of threads
 		thread_par *thread_args = malloc(num_threads * sizeof(thread_par)); /// array of thread arguments
 		
-		for (int t = 0; t < num_threads; t++) {
-			thread_args[t].img   = img;
-			thread_args[t].xmin  = xmin;
-			thread_args[t].xmax  = xmax;
-			thread_args[t].ymin  = ymin;
-			thread_args[t].ymax  = ymax;
-			thread_args[t].max   = max;
-			thread_args[t].width = width;
-			thread_args[t].height = height;
-			thread_args[t].tid   = t;
-			thread_args[t].num_threads = num_threads;
+		for (int k = 0; k < num_threads; k++) {
+			// set up thread arguments
+			thread_args[k].img   = img;
+			thread_args[k].xmin  = xmin;
+			thread_args[k].xmax  = xmax;
+			thread_args[k].ymin  = ymin;
+			thread_args[k].ymax  = ymax;
+			thread_args[k].max   = max;
+			thread_args[k].width = width;
+			thread_args[k].height = height;
+			thread_args[k].tid   = k;
+			thread_args[k].num_threads = num_threads;
 
-			pthread_create(&threads[t], NULL, compute_image_thread, &thread_args[t]); // create thread
+			// create thread
+			pthread_create(&threads[k], NULL, compute_image_thread, &thread_args[k]); // create thread
 		}
 
 		// Wait for all threads
-		for (int t = 0; t < num_threads; t++) {
-			pthread_join(threads[t], NULL); // wait for thread to finish
+		for (int k = 0; k < num_threads; k++) {
+			pthread_join(threads[k], NULL); // wait for thread to finish
 		}
 
 		free(threads); // free thread array
-		free(thread_args);
+		free(thread_args); // free thread arguments array
 	}
 
 }
