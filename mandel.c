@@ -209,7 +209,7 @@ Scale the image to the range (xmin-xmax,ymin-ymax), limiting iterations to "max"
 
 void compute_image(imgRawImage* img, double xmin, double xmax, double ymin, double ymax, int max, int num_threads )
 {
-	int i,j;
+	int i, j;
 
 	int width = img->width;
 	int height = img->height;
